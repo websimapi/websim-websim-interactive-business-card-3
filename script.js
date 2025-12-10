@@ -1,4 +1,4 @@
-import qrcode from 'qrcode-generator';
+import * as QRCode from 'qrcode';
 import { initParticles } from './particles.js';
 import { convertToSTL } from './stl-exporter.js';
 
@@ -6,8 +6,8 @@ let qrMatrix, moduleCount;
 
 /**
  * Generate a QR code for the given URL and render it into the #qrcode container.
- * Uses a canvas-based renderer so we fully control the drawing and sizing,
- * and also captures the raw matrix for STL export.
+ * Uses a canvas-based renderer with a modern QR library and keeps the raw matrix
+ * for STL export.
  */
 function generateQRCode(url) {
     const qrCodeContainer = document.getElementById('qrcode');
@@ -16,55 +16,58 @@ function generateQRCode(url) {
     // Clear any previous QR rendering
     qrCodeContainer.innerHTML = '';
 
-    // Build QR data
-    const qr = qrcode(0, 'M'); // 0 = auto type, M = medium error correction
-    qr.addData(url);
-    qr.make();
+    // Create QR code data structure
+    const qr = QRCode.create(url, { errorCorrectionLevel: 'M' });
+    const size = qr.modules.size;
+    const data = qr.modules.data;
 
-    const count = qr.getModuleCount();
-    moduleCount = count;
-
-    // Create an in-memory boolean matrix for STL export
+    moduleCount = size;
     qrMatrix = [];
-    for (let row = 0; row < count; row++) {
+
+    for (let row = 0; row < size; row++) {
         const rowData = [];
-        for (let col = 0; col < count; col++) {
-            const isDark = qr.isDark(row, col);
+        for (let col = 0; col < size; col++) {
+            const idx = row * size + col;
+            const isDark = !!data[idx];
             rowData.push(isDark);
         }
         qrMatrix.push(rowData);
     }
 
-    // Create a canvas to draw the QR code
+    // Determine display size from container
+    const dpr = window.devicePixelRatio || 1;
+    const containerSize = Math.min(
+        qrCodeContainer.clientWidth || 90,
+        qrCodeContainer.clientHeight || 90
+    );
+    const canvasSize = containerSize * dpr;
+
     const canvas = document.createElement('canvas');
-    // Match the visual size of the QR container (CSS width/height are 70px)
-    const size = 140; // use higher internal resolution for crisper edges
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Draw white background
+    // White background
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, size, size);
+    ctx.fillRect(0, 0, canvasSize, canvasSize);
 
-    // Compute module size and quiet zone
-    const quietZoneModules = 2; // small clean border around the code
-    const modulesWithQuiet = count + quietZoneModules * 2;
-    const moduleSize = size / modulesWithQuiet;
+    // Quiet zone and module size
+    const quietZoneModules = 2;
+    const modulesWithQuiet = size + quietZoneModules * 2;
+    const moduleSize = canvasSize / modulesWithQuiet;
 
     // Draw dark modules
     ctx.fillStyle = '#000000';
-    for (let row = 0; row < count; row++) {
-        for (let col = 0; col < count; col++) {
+    for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
             if (qrMatrix[row][col]) {
                 const x = (col + quietZoneModules) * moduleSize;
                 const y = (row + quietZoneModules) * moduleSize;
-                // Slightly inset to avoid anti-aliased gaps
                 ctx.fillRect(
-                    Math.floor(x),
-                    Math.floor(y),
+                    Math.round(x),
+                    Math.round(y),
                     Math.ceil(moduleSize),
                     Math.ceil(moduleSize)
                 );
@@ -72,7 +75,6 @@ function generateQRCode(url) {
         }
     }
 
-    // Ensure the canvas fits the container
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     canvas.style.display = 'block';
@@ -163,9 +165,8 @@ document.getElementById('embedProfile').addEventListener('click', async function
     try {
         const user = await window.websim.getUser();
         if (user) {
-            // Update for new layout
             const contactP = document.querySelector('.contact-info p');
-            if(contactP) contactP.textContent = user.username;
+            if (contactP) contactP.textContent = user.username;
             
             profile_image.src = user.avatar_url;
             profile_image.style.display = 'block';
@@ -173,9 +174,6 @@ document.getElementById('embedProfile').addEventListener('click', async function
 
             const newUrl = `https://websim.ai/@${user.username}`;
             generateQRCode(newUrl);
-            
-            // If there's a slogan, we could change it, but user might want to keep the 504sites branding mostly.
-            // Let's just update the visible contact info to be the user's name or handle.
         }
     } catch (error) {
         console.error('Error fetching user data:', error);
@@ -187,7 +185,7 @@ document.getElementById('resetCard').addEventListener('click', function() {
     document.querySelector('.slogan').textContent = 'Professional Websites. No Crushing Costs.';
     document.querySelector('.pricing').textContent = '$89/month';
     const contactP = document.querySelector('.contact-info p');
-    if(contactP) contactP.textContent = '504sites.com';
+    if (contactP) contactP.textContent = '504sites.com';
     
     profile_image.style.display = 'none';
     profile_image.removeAttribute('src');
@@ -202,7 +200,6 @@ document.getElementById('printCard').addEventListener('click', function() {
 document.getElementById('convertToSTL').addEventListener('click', function() {
     const cardData = {
         slogan: document.querySelector('.slogan').textContent,
-        // Adapt to new fields
         email: document.querySelector('.pricing').textContent, // Reuse email slot for pricing in STL for now
         website: document.querySelector('.contact-info p').textContent,
         qrMatrix: qrMatrix,
