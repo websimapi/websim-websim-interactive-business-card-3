@@ -31,8 +31,8 @@ export function initParticles(canvasContainerId, businessCardId) {
     }
 
     Particle.prototype.draw = function() {
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillStyle = 'rgba(57, 255, 20, 0.8)'; // Neon Green
+        ctx.strokeStyle = 'rgba(57, 255, 20, 0.8)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);

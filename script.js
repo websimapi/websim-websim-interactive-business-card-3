@@ -24,7 +24,7 @@ function generateQRCode(url) {
     moduleCount = qr.getModuleCount();
 }
 
-generateQRCode('https://websim.ai');
+generateQRCode('https://504sites.com');
 
 // Initialize particles
 initParticles('canvas-container', 'businessCard');
@@ -107,14 +107,19 @@ document.getElementById('embedProfile').addEventListener('click', async function
     try {
         const user = await window.websim.getUser();
         if (user) {
-            document.querySelector('.contact-info p:first-child').textContent = user.username;
+            // Update for new layout
+            const contactP = document.querySelector('.contact-info p');
+            if(contactP) contactP.textContent = user.username;
+            
             profile_image.src = user.avatar_url;
             profile_image.style.display = 'block';
             profile_image.classList.add('fade-in');
 
             const newUrl = `https://websim.ai/@${user.username}`;
             generateQRCode(newUrl);
-            document.querySelector('.contact-info p:last-child').textContent = newUrl;
+            
+            // If there's a slogan, we could change it, but user might want to keep the 504sites branding mostly.
+            // Let's just update the visible contact info to be the user's name or handle.
         }
     } catch (error) {
         console.error('Error fetching user data:', error);
@@ -123,12 +128,14 @@ document.getElementById('embedProfile').addEventListener('click', async function
 });
 
 document.getElementById('resetCard').addEventListener('click', function() {
-    document.querySelector('.slogan').textContent = 'Simulate. Innovate. Create.';
-    document.querySelector('.contact-info p:first-child').textContent = 'support@websim.ai';
-    document.querySelector('.contact-info p:last-child').textContent = 'websim.ai';
+    document.querySelector('.slogan').textContent = 'Professional Websites. No Crushing Costs.';
+    document.querySelector('.pricing').textContent = '$89/month';
+    const contactP = document.querySelector('.contact-info p');
+    if(contactP) contactP.textContent = '504sites.com';
+    
     profile_image.style.display = 'none';
     profile_image.removeAttribute('src');
-    generateQRCode('https://websim.ai');
+    generateQRCode('https://504sites.com');
     editableElements.forEach(el => el.contentEditable = 'false');
 });
 
@@ -139,8 +146,9 @@ document.getElementById('printCard').addEventListener('click', function() {
 document.getElementById('convertToSTL').addEventListener('click', function() {
     const cardData = {
         slogan: document.querySelector('.slogan').textContent,
-        email: document.querySelector('.contact-info p:first-child').textContent,
-        website: document.querySelector('.contact-info p:last-child').textContent,
+        // Adapt to new fields
+        email: document.querySelector('.pricing').textContent, // Reuse email slot for pricing in STL for now
+        website: document.querySelector('.contact-info p').textContent,
         qrMatrix: qrMatrix,
         moduleCount: moduleCount
     };
