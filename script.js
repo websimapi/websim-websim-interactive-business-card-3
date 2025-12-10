@@ -4,36 +4,80 @@ import { convertToSTL } from './stl-exporter.js';
 
 let qrMatrix, moduleCount;
 
+/**
+ * Generate a QR code for the given URL and render it into the #qrcode container.
+ * Uses a canvas-based renderer so we fully control the drawing and sizing,
+ * and also captures the raw matrix for STL export.
+ */
 function generateQRCode(url) {
-    // 0 = Auto type, 'M' = Medium Error Correction
-    var qr = qrcode(0, 'M');
+    const qrCodeContainer = document.getElementById('qrcode');
+    if (!qrCodeContainer) return;
+
+    // Clear any previous QR rendering
+    qrCodeContainer.innerHTML = '';
+
+    // Build QR data
+    const qr = qrcode(0, 'M'); // 0 = auto type, M = medium error correction
     qr.addData(url);
     qr.make();
 
-    const qrCodeContainer = document.getElementById('qrcode');
-    // Using cellSize 1 and margin 0 allows us to set a precise viewBox.
-    // CSS padding handles the quiet zone/white border.
-    qrCodeContainer.innerHTML = qr.createSvgTag({ cellSize: 1, margin: 0 });
-    
-    const svg = qrCodeContainer.querySelector('svg');
-    if (svg) {
-        // Set viewBox to match the module count, ensuring the SVG scales correctly to fill the container
-        const count = qr.getModuleCount();
-        svg.setAttribute('viewBox', `0 0 ${count} ${count}`);
-        
-        // Remove fixed dimensions to allow CSS scaling via container size
-        svg.removeAttribute('width');
-        svg.removeAttribute('height');
-        
-        // Ensure SVG fills the container
-        svg.style.width = '100%';
-        svg.style.height = '100%';
-        svg.style.display = 'block';
-        svg.style.shapeRendering = 'crispEdges'; // Ensures sharp edges for QR modules
+    const count = qr.getModuleCount();
+    moduleCount = count;
+
+    // Create an in-memory boolean matrix for STL export
+    qrMatrix = [];
+    for (let row = 0; row < count; row++) {
+        const rowData = [];
+        for (let col = 0; col < count; col++) {
+            const isDark = qr.isDark(row, col);
+            rowData.push(isDark);
+        }
+        qrMatrix.push(rowData);
     }
 
-    qrMatrix = qr.modules;
-    moduleCount = qr.getModuleCount();
+    // Create a canvas to draw the QR code
+    const canvas = document.createElement('canvas');
+    // Match the visual size of the QR container (CSS width/height are 70px)
+    const size = 140; // use higher internal resolution for crisper edges
+    canvas.width = size;
+    canvas.height = size;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Draw white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+
+    // Compute module size and quiet zone
+    const quietZoneModules = 2; // small clean border around the code
+    const modulesWithQuiet = count + quietZoneModules * 2;
+    const moduleSize = size / modulesWithQuiet;
+
+    // Draw dark modules
+    ctx.fillStyle = '#000000';
+    for (let row = 0; row < count; row++) {
+        for (let col = 0; col < count; col++) {
+            if (qrMatrix[row][col]) {
+                const x = (col + quietZoneModules) * moduleSize;
+                const y = (row + quietZoneModules) * moduleSize;
+                // Slightly inset to avoid anti-aliased gaps
+                ctx.fillRect(
+                    Math.floor(x),
+                    Math.floor(y),
+                    Math.ceil(moduleSize),
+                    Math.ceil(moduleSize)
+                );
+            }
+        }
+    }
+
+    // Ensure the canvas fits the container
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+
+    qrCodeContainer.appendChild(canvas);
 }
 
 generateQRCode('https://504sites.com');
