@@ -11,13 +11,25 @@ function generateQRCode(url) {
     qr.make();
 
     const qrCodeContainer = document.getElementById('qrcode');
-    // Using cellSize 1 and margin 1 to get a base svg that can be scaled up by CSS.
-    qrCodeContainer.innerHTML = qr.createSvgTag({ cellSize: 1, margin: 1 });
+    // Using cellSize 1 and margin 0 allows us to set a precise viewBox.
+    // CSS padding handles the quiet zone/white border.
+    qrCodeContainer.innerHTML = qr.createSvgTag({ cellSize: 1, margin: 0 });
+    
     const svg = qrCodeContainer.querySelector('svg');
     if (svg) {
-        // Remove fixed dimensions to allow CSS scaling.
+        // Set viewBox to match the module count, ensuring the SVG scales correctly to fill the container
+        const count = qr.getModuleCount();
+        svg.setAttribute('viewBox', `0 0 ${count} ${count}`);
+        
+        // Remove fixed dimensions to allow CSS scaling via container size
         svg.removeAttribute('width');
         svg.removeAttribute('height');
+        
+        // Ensure SVG fills the container
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.display = 'block';
+        svg.style.shapeRendering = 'crispEdges'; // Ensures sharp edges for QR modules
     }
 
     qrMatrix = qr.modules;
